@@ -152,7 +152,7 @@ func (s *Server) pushToUser(ctx context.Context, userID string, msgData *sdkws.M
 		userPlatform := &msggateway.SingleMsgToUserPlatform{
 			RecvPlatFormID: int32(client.PlatformID),
 		}
-		if client.IsBackground && client.PlatformID == constant.IOSPlatformID {
+		if client.IsBackground && (client.PlatformID == constant.IOSPlatformID || client.PlatformID == constant.AndroidPlatformID) {
 			userPlatform.ResultCode = int64(servererrs.ErrIOSBackgroundPushErr.Code())
 			result.Resp = append(result.Resp, userPlatform)
 			continue
