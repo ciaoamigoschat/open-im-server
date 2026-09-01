@@ -136,6 +136,17 @@ func (m *msgServer) MarkConversationAsRead(ctx context.Context, req *msg.MarkCon
 	if err != nil {
 		return nil, err
 	}
+	maxSeq, err := m.MsgDatabase.GetMaxSeq(ctx, req.ConversationID)
+	if err != nil {
+		return nil, err
+	}
+	requestedHasReadSeq := req.HasReadSeq
+	req.HasReadSeq = validHasReadSeq(req.HasReadSeq, maxSeq)
+	if requestedHasReadSeq != req.HasReadSeq {
+		log.ZWarn(ctx, "clamped invalid conversation read sequence", nil,
+			"conversationID", req.ConversationID, "userID", req.UserID,
+			"requestedHasReadSeq", requestedHasReadSeq, "maxSeq", maxSeq)
+	}
 	hasReadSeq, err := m.MsgDatabase.GetHasReadSeq(ctx, req.UserID, req.ConversationID)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, err
@@ -199,6 +210,13 @@ func (m *msgServer) MarkConversationAsRead(ctx context.Context, req *msg.MarkCon
 		m.webhookAfterGroupMsgRead(ctx, &m.config.WebhooksConfig.AfterGroupMsgRead, reqCall)
 	}
 	return &msg.MarkConversationAsReadResp{}, nil
+}
+
+func validHasReadSeq(hasReadSeq, maxSeq int64) int64 {
+	if hasReadSeq > maxSeq {
+		return maxSeq
+	}
+	return hasReadSeq
 }
 
 func (m *msgServer) sendMarkAsReadNotification(ctx context.Context, conversationID string, sessionType int32, sendID, recvID string, seqs []int64, hasReadSeq int64) {
