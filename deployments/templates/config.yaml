@@ -303,7 +303,7 @@ tokenPolicy:
 #
 # Whether to verify friendship when sending messages
 messageVerify:
-  friendVerify: false
+  friendVerify: true
 
 # iOS push notification configuration
 #

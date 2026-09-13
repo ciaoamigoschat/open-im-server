@@ -317,7 +317,7 @@ data:
 
 
     # Does sending messages require friend verification
-    friendVerify: false
+    friendVerify: true
 
   openim-rpc-third.yml: |
     rpc:

@@ -18,4 +18,4 @@ prometheus:
 
 
 # Does sending messages require friend verification
-friendVerify: false
+friendVerify: true

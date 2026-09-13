@@ -74,7 +74,7 @@ func (m *msgServer) messageVerification(ctx context.Context, data *msg.SendMsgRe
 			if err != nil {
 				return err
 			}
-			if !friend {
+			if !friend && !isAllowedNonFriendCallSignal(data.MsgData) {
 				return servererrs.ErrNotPeersFriend.Wrap()
 			}
 			return nil

@@ -2,6 +2,10 @@
 
 Welcome to the OpenIM Documentation hub! This center provides a comprehensive range of guides and manuals designed to help you get the most out of your OpenIM experience.
 
+## CiaoAmigos fork
+
+- [CiaoAmigos customizations](./CIAOAMIGOS_FORK.md) - Local changes that must be preserved when rebasing or upgrading OpenIM.
+
 ## Table of Contents
 
 1. [Contrib](https://github.com/openimsdk/open-im-server/blob/main/docs/contrib) - Guidance on contributing and configurations for developers
