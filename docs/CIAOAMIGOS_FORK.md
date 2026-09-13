@@ -4,6 +4,41 @@ Questo documento registra le modifiche mantenute nel fork
 `ciaoamigoschat/open-im-server` rispetto a OpenIM upstream. Va aggiornato insieme
 al codice quando una personalizzazione viene aggiunta, rimossa o modificata.
 
+## Patch mantenute
+
+Le patch applicate sopra `v3.8.3-patch.12`, nell'ordine, sono:
+
+| Commit | Modifica | Motivazione |
+| --- | --- | --- |
+| `7c86710a1` | Push offline per Android in background. | Un client Android con WebSocket ancora connesso ma `isBackground=true` deve ricevere la push FCM. Il foreground e iOS restano invariati. |
+| `337c06312` | Limite della sequenza di lettura al `maxSeq` della conversazione. | Impedisce di memorizzare un `hasReadSeq` impossibile, che causava incoerenze nella lettura della conversazione. |
+| `77d23e88f` | Verifica amicizia con eccezione per i segnali di chiamata. | Blocca le chat private tra non amici senza interrompere le chiamate anonime. |
+
+Questi commit devono essere mantenuti insieme durante un aggiornamento di
+OpenIM. In particolare, non sostituire l'immagine del fork con l'immagine
+ufficiale: si perderebbero la gestione Android e le altre correzioni locali.
+
+## Push Android in background
+
+La modifica è in `internal/msggateway/hub_server.go`, con test in
+`internal/msggateway/hub_server_test.go`. Rende eleggibile per la push un client
+Android che ha dichiarato `isBackground=true` anche se il WebSocket non è ancora
+stato chiuso.
+
+Comportamento da preservare:
+
+- Android foreground con WebSocket connesso: nessuna push FCM duplicata;
+- Android background: push FCM consentita;
+- Android offline: comportamento OpenIM originale;
+- iOS: comportamento invariato.
+
+## Sequenza di lettura della conversazione
+
+`internal/rpc/msg/as_read.go` legge il `maxSeq` della conversazione e limita
+`HasReadSeq` a tale valore prima di salvarlo. Se riceve un valore superiore,
+scrive un warning diagnostico e usa `maxSeq`. Il test si trova in
+`internal/rpc/msg/as_read_test.go`.
+
 ## Verifica amicizia e segnali di chiamata
 
 Data di introduzione: 13 settembre 2026.
@@ -79,7 +114,7 @@ incluso nell'app.
 Prima di pubblicare una nuova immagine del fork eseguire almeno:
 
 ```bash
-go test ./internal/rpc/msg -run 'TestIsAllowedNonFriendCallSignal'
+go test ./internal/msggateway ./internal/push/... ./internal/rpc/msg
 ```
 
 Verificare inoltre su due account non amici che:
