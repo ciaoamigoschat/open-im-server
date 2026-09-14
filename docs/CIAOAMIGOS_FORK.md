@@ -13,10 +13,27 @@ Le patch applicate sopra `v3.8.3-patch.12`, nell'ordine, sono:
 | `7c86710a1` | Push offline per Android in background. | Un client Android con WebSocket ancora connesso ma `isBackground=true` deve ricevere la push FCM. Il foreground e iOS restano invariati. |
 | `337c06312` | Limite della sequenza di lettura al `maxSeq` della conversazione. | Impedisce di memorizzare un `hasReadSeq` impossibile, che causava incoerenze nella lettura della conversazione. |
 | `77d23e88f` | Verifica amicizia con eccezione per i segnali di chiamata. | Blocca le chat private tra non amici senza interrompere le chiamate anonime. |
+| `8feab23b1` | Moderazione realtime dei messaggi. | Applica rate limit, controlli anti-spam e provvedimenti temporanei prima dell'accodamento Kafka. |
 
 Questi commit devono essere mantenuti insieme durante un aggiornamento di
 OpenIM. In particolare, non sostituire l'immagine del fork con l'immagine
 ufficiale: si perderebbero la gestione Android e le altre correzioni locali.
+
+## Moderazione realtime
+
+La patch `8feab23b1` introduce il package isolato `internal/moderation` e lo
+invoca da `internal/rpc/msg/send.go` dopo la validazione del messaggio e prima
+di webhook, `MsgToMQ`, Kafka, persistenza e consegna. NodeAuth non partecipa al
+percorso realtime: viene usato soltanto come proxy amministrativo autenticato.
+
+La configurazione, le liste, i contatori, mute, ban temporanei, eventi e
+statistiche sono conservati in Redis. Il servizio RPC mantiene configurazione,
+parole e domini in RAM e riceve gli aggiornamenti tramite Redis Pub/Sub, con un
+refresh periodico di sicurezza ogni 30 secondi. La policy Redis predefinita è
+`FAIL_OPEN`.
+
+La specifica operativa, inclusi endpoint, ruoli, configurazione iniziale,
+metriche, rollout e rollback, è in [`MODERATION.md`](./MODERATION.md).
 
 ## Push Android in background
 
