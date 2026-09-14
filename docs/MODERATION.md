@@ -175,7 +175,23 @@ Artifact verificato il 14 settembre 2026:
 Immagine: ciaoamigos/openim-server:v3.8.3-patch.12-moderation-8feab23b1
 Architettura: linux/amd64
 Image ID: sha256:9bdc118ee0fbf6ee5be2f39695638b6bb539ae63b0cb3d41cee00cc5af95fbf3
+Archivio: openim-server-v3.8.3-patch.12-moderation-8feab23b1-linux-amd64.tar.gz
+SHA-256: ccb846dd2583eb79bb8f8a2a239f5232231ec520650efe203fe0cd75e09f06c7
 ```
+
+### Stato produzione
+
+Il rollout su produzione è stato completato il 14 settembre 2026. Il container
+usa l'immagine e l'Image ID riportati sopra. Il backup del file di ambiente è:
+
+```text
+/opt/openim-docker/.env.before-moderation-20260914-211619
+```
+
+Le verifiche successive al deploy hanno confermato container `healthy`, zero
+riavvii, tutti i servizi attivi secondo `mage check`, health check pubblico
+`200 OK` e rifiuto senza token di `/moderation/config`. Quest'ultimo controllo
+conferma che la route è presente e protetta dall'autenticazione amministrativa.
 
 Prima del rollout creare un backup del file `.env` del deployment. Modificare
 soltanto `OPENIM_SERVER_IMAGE`, poi ricreare esclusivamente OpenIM Server:
