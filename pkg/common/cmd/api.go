@@ -35,6 +35,7 @@ func NewApiCmd() *ApiCmd {
 	ret := &ApiCmd{apiConfig: &apiConfig}
 	ret.configMap = map[string]any{
 		OpenIMAPICfgFileName:    &apiConfig.API,
+		RedisConfigFileName:     &apiConfig.Redis,
 		ShareFileName:           &apiConfig.Share,
 		DiscoveryConfigFilename: &apiConfig.Discovery,
 	}

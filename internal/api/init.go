@@ -31,6 +31,7 @@ import (
 
 type Config struct {
 	API       config.API
+	Redis     config.Redis
 	Share     config.Share
 	Discovery config.Discovery
 }

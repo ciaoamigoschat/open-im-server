@@ -74,6 +74,7 @@ const (
 	MutedInGroup          = 1402 // Member muted in the group
 	MutedGroup            = 1403 // Group is muted
 	MsgAlreadyRevoke      = 1404 // Message already revoked
+	MessageModerated      = 1405 // Message rejected by moderation
 
 	// Token error codes.
 	TokenExpiredError     = 1501

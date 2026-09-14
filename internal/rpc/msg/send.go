@@ -16,8 +16,12 @@ package msg
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 
+	"github.com/openimsdk/open-im-server/v3/internal/moderation"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/prommetrics"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/servererrs"
 	"github.com/openimsdk/open-im-server/v3/pkg/msgprocessor"
 	"github.com/openimsdk/open-im-server/v3/pkg/util/conversationutil"
 	"github.com/openimsdk/protocol/constant"
@@ -50,6 +54,10 @@ func (m *msgServer) SendMsg(ctx context.Context, req *pbmsg.SendMsgReq) (*pbmsg.
 
 func (m *msgServer) sendMsgGroupChat(ctx context.Context, req *pbmsg.SendMsgReq) (resp *pbmsg.SendMsgResp, err error) {
 	if err = m.messageVerification(ctx, req); err != nil {
+		prommetrics.GroupChatMsgProcessFailedCounter.Inc()
+		return nil, err
+	}
+	if err = m.moderateMessage(ctx, req, msgprocessor.GetConversationIDByMsg(req.MsgData)); err != nil {
 		prommetrics.GroupChatMsgProcessFailedCounter.Inc()
 		return nil, err
 	}
@@ -155,6 +163,10 @@ func (m *msgServer) sendMsgSingleChat(ctx context.Context, req *pbmsg.SendMsgReq
 	if err := m.messageVerification(ctx, req); err != nil {
 		return nil, err
 	}
+	if err := m.moderateMessage(ctx, req, conversationutil.GenConversationIDForSingle(req.MsgData.SendID, req.MsgData.RecvID)); err != nil {
+		prommetrics.SingleChatMsgProcessFailedCounter.Inc()
+		return nil, err
+	}
 	isSend := true
 	isNotification := msgprocessor.IsNotificationByMsg(req.MsgData)
 	if !isNotification {
@@ -189,4 +201,47 @@ func (m *msgServer) sendMsgSingleChat(ctx context.Context, req *pbmsg.SendMsgReq
 			SendTime:    req.MsgData.SendTime,
 		}, nil
 	}
+}
+
+func (m *msgServer) moderateMessage(ctx context.Context, req *pbmsg.SendMsgReq, conversationID string) error {
+	if m.moderationService == nil || req.MsgData == nil || msgprocessor.IsNotificationByMsg(req.MsgData) || datautil.Contain(req.MsgData.SendID, m.config.Share.IMAdminUserID...) {
+		return nil
+	}
+	text := moderationText(req.MsgData)
+	if text == "" {
+		return nil
+	}
+	decision, err := m.moderationService.CheckMessage(ctx, moderation.Message{
+		UserID: req.MsgData.SendID, RecipientID: moderationRecipient(req.MsgData), ConversationID: conversationID,
+		MessageID: req.MsgData.ClientMsgID, Text: text,
+	})
+	if err != nil {
+		return err
+	}
+	if !decision.Allowed {
+		log.ZWarn(ctx, "message rejected by moderation", nil, "sendID", req.MsgData.SendID, "action", decision.Action, "score", decision.Score, "reasons", decision.Reasons)
+		return servererrs.ErrMessageModerated.WithDetail(decision.Error().Error()).Wrap()
+	}
+	return nil
+}
+
+func moderationText(msg *sdkws.MsgData) string {
+	if msg.ContentType != constant.Text && msg.ContentType != constant.AtText {
+		return ""
+	}
+	var content struct {
+		Content string `json:"content"`
+		Text    string `json:"text"`
+	}
+	if json.Unmarshal(msg.Content, &content) != nil {
+		return ""
+	}
+	return strings.TrimSpace(content.Content + " " + content.Text)
+}
+
+func moderationRecipient(msg *sdkws.MsgData) string {
+	if msg.SessionType == constant.ReadGroupChatType {
+		return msg.GroupID
+	}
+	return msg.RecvID
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/openimsdk/protocol/user"
 
 	"github.com/openimsdk/open-im-server/v3/internal/api/jssdk"
+	"github.com/openimsdk/open-im-server/v3/internal/moderation"
 
 	"github.com/gin-contrib/gzip"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/openimsdk/open-im-server/v3/pkg/common/servererrs"
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/apiresp"
+	"github.com/openimsdk/tools/db/redisutil"
 	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw"
@@ -95,7 +97,8 @@ func newGinRouter(ctx context.Context, client discovery.SvcDiscoveryRegistry, co
 	case BestSpeed:
 		r.Use(gzip.Gzip(gzip.BestSpeed))
 	}
-	r.Use(prommetricsGin(), gin.RecoveryWithWriter(gin.DefaultErrorWriter, mw.GinPanicErr), mw.CorsHandler(), mw.GinParseOperationID(), GinParseToken(rpcli.NewAuthClient(authConn)))
+	authClient := rpcli.NewAuthClient(authConn)
+	r.Use(prommetricsGin(), gin.RecoveryWithWriter(gin.DefaultErrorWriter, mw.GinPanicErr), mw.CorsHandler(), mw.GinParseOperationID(), GinParseToken(authClient))
 	u := NewUserApi(user.NewUserClient(userConn), client, config.Share.RpcRegisterName)
 	m := NewMessageApi(msg.NewMsgClient(msgConn), rpcli.NewUserClient(userConn), config.Share.IMAdminUserID)
 	userRouterGroup := r.Group("/user")
@@ -278,6 +281,31 @@ func newGinRouter(ctx context.Context, client discovery.SvcDiscoveryRegistry, co
 		jssdk := r.Group("/jssdk")
 		jssdk.POST("/get_conversations", j.GetConversations)
 		jssdk.POST("/get_active_conversations", j.GetActiveConversations)
+	}
+	{
+		rdb, err := redisutil.NewRedisClient(ctx, config.Redis.Build())
+		if err != nil {
+			return nil, err
+		}
+		moderationAPI := NewModerationAPI(moderation.NewRepository(rdb))
+		moderationGroup := r.Group("/moderation", ModerationAdminOnly(authClient, config.Share.IMAdminUserID))
+		moderationGroup.GET("/config", moderationAPI.GetConfig)
+		moderationGroup.PUT("/config", moderationAPI.PutConfig)
+		moderationGroup.GET("/banned-words", moderationAPI.GetBannedWords)
+		moderationGroup.POST("/banned-words", moderationAPI.PostBannedWord)
+		moderationGroup.PUT("/banned-words/:id", moderationAPI.PutBannedWord)
+		moderationGroup.DELETE("/banned-words/:id", moderationAPI.DeleteBannedWord)
+		moderationGroup.GET("/banned-domains", moderationAPI.GetBannedDomains)
+		moderationGroup.POST("/banned-domains", moderationAPI.PostBannedDomain)
+		moderationGroup.PUT("/banned-domains/:id", moderationAPI.PutBannedDomain)
+		moderationGroup.DELETE("/banned-domains/:id", moderationAPI.DeleteBannedDomain)
+		moderationGroup.GET("/users/:userId/status", moderationAPI.GetUserStatus)
+		moderationGroup.POST("/users/:userId/mute", moderationAPI.MuteUser)
+		moderationGroup.POST("/users/:userId/unmute", moderationAPI.UnmuteUser)
+		moderationGroup.POST("/users/:userId/ban", moderationAPI.BanUser)
+		moderationGroup.POST("/users/:userId/unban", moderationAPI.UnbanUser)
+		moderationGroup.GET("/events", moderationAPI.GetEvents)
+		moderationGroup.GET("/stats", moderationAPI.GetStats)
 	}
 	{
 		pd := NewPrometheusDiscoveryApi(config, client)

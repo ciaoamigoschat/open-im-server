@@ -2,6 +2,7 @@ package prommetrics
 
 import (
 	gp "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/openimsdk/open-im-server/v3/internal/moderation"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -48,12 +49,12 @@ func GetGrpcCusMetrics(registerName string, share *config.Share) []prometheus.Co
 	case share.RpcRegisterName.MessageGateway:
 		return []prometheus.Collector{OnlineUserGauge}
 	case share.RpcRegisterName.Msg:
-		return []prometheus.Collector{
+		return append([]prometheus.Collector{
 			SingleChatMsgProcessSuccessCounter,
 			SingleChatMsgProcessFailedCounter,
 			GroupChatMsgProcessSuccessCounter,
 			GroupChatMsgProcessFailedCounter,
-		}
+		}, moderation.Collectors()...)
 	case share.RpcRegisterName.Push:
 		return []prometheus.Collector{
 			MsgOfflinePushFailedCounter,

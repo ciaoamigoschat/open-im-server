@@ -57,6 +57,7 @@ var (
 	ErrMutedInGroup     = errs.NewCodeError(MutedInGroup, "MutedInGroup")
 	ErrMutedGroup       = errs.NewCodeError(MutedGroup, "MutedGroup")
 	ErrMsgAlreadyRevoke = errs.NewCodeError(MsgAlreadyRevoke, "MsgAlreadyRevoke")
+	ErrMessageModerated = errs.NewCodeError(MessageModerated, "MessageModerated")
 
 	ErrConnOverMaxNumLimit = errs.NewCodeError(ConnOverMaxNumLimit, "ConnOverMaxNumLimit")
 

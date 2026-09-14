@@ -17,6 +17,7 @@ package msg
 import (
 	"context"
 
+	"github.com/openimsdk/open-im-server/v3/internal/moderation"
 	"github.com/openimsdk/open-im-server/v3/pkg/notification"
 	"github.com/openimsdk/open-im-server/v3/pkg/rpcli"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/openimsdk/protocol/conversation"
 	"github.com/openimsdk/protocol/msg"
 	"github.com/openimsdk/tools/discovery"
+	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
 )
 
@@ -69,6 +71,7 @@ type msgServer struct {
 	config                 *Config                          // Global configuration settings.
 	webhookClient          *webhook.Client
 	conversationClient     *rpcli.ConversationClient
+	moderationService      *moderation.Service
 }
 
 func (m *msgServer) addInterceptorHandler(interceptorFunc ...MessageInterceptorFunc) {
@@ -132,6 +135,12 @@ func Start(ctx context.Context, config *Config, client discovery.SvcDiscoveryReg
 		webhookClient:          webhook.NewWebhookClient(config.WebhooksConfig.URL),
 		conversationClient:     conversationClient,
 	}
+	moderationService, moderationErr := moderation.NewService(ctx, moderation.NewRepository(rdb))
+	if moderationErr != nil {
+		// FAIL_OPEN remains available with defaults until Redis recovers and reloads.
+		log.ZWarn(ctx, "moderation initial configuration unavailable", moderationErr)
+	}
+	s.moderationService = moderationService
 
 	s.notificationSender = notification.NewNotificationSender(&config.NotificationConfig, notification.WithLocalSendMsg(s.SendMsg))
 	s.msgNotificationSender = NewMsgNotificationSender(config, notification.WithLocalSendMsg(s.SendMsg))
