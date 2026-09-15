@@ -15,6 +15,7 @@ import (
 	"github.com/openimsdk/tools/apiresp"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/mcontext"
+	"github.com/openimsdk/tools/utils/idutil"
 )
 
 type ModerationAPI struct {
@@ -27,6 +28,11 @@ func NewModerationAPI(repository *moderation.Repository) *ModerationAPI {
 
 func ModerationAdminOnly(authClient *rpcli.AuthClient, adminUserIDs []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		operationID := c.GetHeader(constant.OperationID)
+		if operationID == "" {
+			operationID = idutil.OperationIDGenerator()
+		}
+		c.Set(constant.OperationID, operationID)
 		if c.Request.Method == http.MethodOptions {
 			c.Next()
 			return
