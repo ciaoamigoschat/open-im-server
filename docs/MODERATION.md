@@ -132,8 +132,11 @@ GET    /moderation/events
 GET    /moderation/stats
 ```
 
-NodeAuth espone gli stessi percorsi sotto `/api/moderation`. I permessi
-applicativi sono:
+Verso AdminChat, NodeAuth espone esclusivamente route `POST` sotto
+`/api/moderation` (azioni come `/stats/get`, `/events/search`, `/config/get` e
+`/config/update`). NodeAuth traduce poi ogni azione nel metodo OpenIM indicato
+sopra; il browser non chiama mai direttamente OpenIM. I permessi applicativi
+sono:
 
 | Ruolo | Operazioni |
 | --- | --- |
@@ -148,6 +151,10 @@ Payload provvedimenti:
 
 Filtri eventi supportati: `page`, `pageSize`, `userID`, `action` e `reason`.
 L'audit non conserva il testo originale del messaggio.
+
+Il middleware OpenIM della moderazione inizializza inoltre `operationID` per
+ogni metodo HTTP. Questo contesto è richiesto dalla strumentazione dei
+repository Redis anche sulle operazioni di sola lettura.
 
 ## Metriche
 
@@ -166,32 +173,33 @@ Per questa patch l'immagine è costruita per `linux/amd64`:
 
 ```bash
 docker buildx build --platform linux/amd64 --load \
-  -t ciaoamigos/openim-server:v3.8.3-patch.12-moderation-8feab23b1 .
+  -t ciaoamigos/openim-server:v3.8.3-patch.12-moderation-context-8591ca514 .
 ```
 
-Artifact verificato il 14 settembre 2026:
+Artifact verificato il 15 settembre 2026:
 
 ```text
-Immagine: ciaoamigos/openim-server:v3.8.3-patch.12-moderation-8feab23b1
+Immagine: ciaoamigos/openim-server:v3.8.3-patch.12-moderation-context-8591ca514
 Architettura: linux/amd64
-Image ID: sha256:9bdc118ee0fbf6ee5be2f39695638b6bb539ae63b0cb3d41cee00cc5af95fbf3
-Archivio: openim-server-v3.8.3-patch.12-moderation-8feab23b1-linux-amd64.tar.gz
-SHA-256: ccb846dd2583eb79bb8f8a2a239f5232231ec520650efe203fe0cd75e09f06c7
+Image ID: sha256:65fb816df4aaf5640a75331f9bb956f6274236b2c717042b3cce3151b8ae2f89
+Archivio: openim-server-v3.8.3-patch.12-moderation-context-8591ca514-linux-amd64.tar.gz
+SHA-256: 654297954df15dd810299f5cd6be864c8cd540e52c7e30e5eab43900a6cde7af
 ```
 
 ### Stato produzione
 
-Il rollout su produzione è stato completato il 14 settembre 2026. Il container
+Il rollout dell'aggiornamento è stato completato il 15 settembre 2026. Il container
 usa l'immagine e l'Image ID riportati sopra. Il backup del file di ambiente è:
 
 ```text
-/opt/openim-docker/.env.before-moderation-20260914-211619
+/opt/openim-docker/.env.before-moderation-context-20260915-044605
 ```
 
 Le verifiche successive al deploy hanno confermato container `healthy`, zero
-riavvii, tutti i servizi attivi secondo `mage check`, health check pubblico
-`200 OK` e rifiuto senza token di `/moderation/config`. Quest'ultimo controllo
-conferma che la route è presente e protetta dall'autenticazione amministrativa.
+riavvii, tutti i servizi attivi secondo `mage check` e health check pubblico
+`200 OK`. Le richieste NodeAuth autenticate verso statistiche, configurazione,
+parole e domini hanno completato correttamente senza il precedente errore sul
+contesto `operationID`.
 
 Prima del rollout creare un backup del file `.env` del deployment. Modificare
 soltanto `OPENIM_SERVER_IMAGE`, poi ricreare esclusivamente OpenIM Server:

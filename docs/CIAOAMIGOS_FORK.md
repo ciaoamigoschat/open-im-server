@@ -14,6 +14,7 @@ Le patch applicate sopra `v3.8.3-patch.12`, nell'ordine, sono:
 | `337c06312` | Limite della sequenza di lettura al `maxSeq` della conversazione. | Impedisce di memorizzare un `hasReadSeq` impossibile, che causava incoerenze nella lettura della conversazione. |
 | `77d23e88f` | Verifica amicizia con eccezione per i segnali di chiamata. | Blocca le chat private tra non amici senza interrompere le chiamate anonime. |
 | `8feab23b1` | Moderazione realtime dei messaggi. | Applica rate limit, controlli anti-spam e provvedimenti temporanei prima dell'accodamento Kafka. |
+| `8591ca514` | Inizializzazione del contesto delle API di moderazione. | Rende disponibili `operationID` e strumentazione Redis anche per le route amministrative `GET`, `PUT` e `DELETE`, evitando risposte `502` dal proxy NodeAuth. |
 
 Questi commit devono essere mantenuti insieme durante un aggiornamento di
 OpenIM. In particolare, non sostituire l'immagine del fork con l'immagine
@@ -25,6 +26,10 @@ La patch `8feab23b1` introduce il package isolato `internal/moderation` e lo
 invoca da `internal/rpc/msg/send.go` dopo la validazione del messaggio e prima
 di webhook, `MsgToMQ`, Kafka, persistenza e consegna. NodeAuth non partecipa al
 percorso realtime: viene usato soltanto come proxy amministrativo autenticato.
+
+La patch `8591ca514` inizializza `operationID` nel middleware amministrativo
+della moderazione per tutti i metodi HTTP. L'ID ricevuto viene preservato; se
+manca, OpenIM ne genera uno prima di accedere ai repository Redis.
 
 La configurazione, le liste, i contatori, mute, ban temporanei, eventi e
 statistiche sono conservati in Redis. Il servizio RPC mantiene configurazione,
