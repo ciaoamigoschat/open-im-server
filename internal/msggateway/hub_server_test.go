@@ -97,3 +97,42 @@ func TestPushToUserBackgroundPushEligibility(t *testing.T) {
 		})
 	}
 }
+
+func TestPushToUserKeepsOfflinePushForBackgroundMobileOnAnotherDevice(t *testing.T) {
+	foregroundConn := &pushTestClientConn{}
+	backgroundConn := &pushTestClientConn{}
+	longConnServer := &pushTestLongConnServer{
+		online: true,
+		clients: []*Client{
+			{
+				w:          new(sync.Mutex),
+				conn:       foregroundConn,
+				PlatformID: constant.IOSPlatformID,
+				Encoder:    NewJsonEncoder(),
+			},
+			{
+				w:            new(sync.Mutex),
+				conn:         backgroundConn,
+				PlatformID:   constant.IOSPlatformID,
+				IsBackground: true,
+				Encoder:      NewJsonEncoder(),
+			},
+		},
+	}
+	server := NewServer(longConnServer, nil, nil)
+	result := server.pushToUser(context.Background(), "recipient", &sdkws.MsgData{
+		SendID:      "sender",
+		RecvID:      "recipient",
+		SessionType: constant.SingleChatType,
+	})
+
+	if foregroundConn.writes != 1 {
+		t.Fatalf("foreground WebSocket writes = %d, want 1", foregroundConn.writes)
+	}
+	if backgroundConn.writes != 0 {
+		t.Fatalf("background WebSocket writes = %d, want 0", backgroundConn.writes)
+	}
+	if result.OnlinePush {
+		t.Fatal("offline push was suppressed by another foreground device")
+	}
+}

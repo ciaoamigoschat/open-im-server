@@ -140,6 +140,7 @@ func (s *Server) pushToUser(ctx context.Context, userID string, msgData *sdkws.M
 		UserID: userID,
 		Resp:   make([]*msggateway.SingleMsgToUserPlatform, 0, len(clients)),
 	}
+	needsOfflinePush := false
 	for _, client := range clients {
 		if client == nil {
 			continue
@@ -160,8 +161,12 @@ func (s *Server) pushToUser(ctx context.Context, userID string, msgData *sdkws.M
 			}
 		} else {
 			userPlatform.ResultCode = int64(servererrs.ErrIOSBackgroundPushErr.Code())
+			needsOfflinePush = true
 		}
 		result.Resp = append(result.Resp, userPlatform)
+	}
+	if needsOfflinePush {
+		result.OnlinePush = false
 	}
 	return result
 }
