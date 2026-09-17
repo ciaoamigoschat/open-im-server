@@ -15,6 +15,7 @@ Le patch applicate sopra `v3.8.3-patch.12`, nell'ordine, sono:
 | `77d23e88f` | Verifica amicizia con eccezione per i segnali di chiamata. | Blocca le chat private tra non amici senza interrompere le chiamate anonime. |
 | `8feab23b1` | Moderazione realtime dei messaggi. | Applica rate limit, controlli anti-spam e provvedimenti temporanei prima dell'accodamento Kafka. |
 | `8591ca514` | Inizializzazione del contesto delle API di moderazione. | Rende disponibili `operationID` e strumentazione Redis anche per le route amministrative `GET`, `PUT` e `DELETE`, evitando risposte `502` dal proxy NodeAuth. |
+| `eb016569e` | Push offline per dispositivi mobili in background in presenza di altre sessioni. | Una sessione iOS o Android in primo piano dello stesso account non deve sopprimere la push destinata a un altro telefono in background. |
 
 Questi commit devono essere mantenuti insieme durante un aggiornamento di
 OpenIM. In particolare, non sostituire l'immagine del fork con l'immagine
@@ -52,7 +53,10 @@ Comportamento da preservare:
 - Android foreground con WebSocket connesso: nessuna push FCM duplicata;
 - Android background: push FCM consentita;
 - Android offline: comportamento OpenIM originale;
-- iOS: comportamento invariato.
+- iOS background: push FCM consentita;
+- più dispositivi dello stesso account: la presenza di una sessione mobile in
+  background mantiene eleggibile l'utente per il push offline, anche quando
+  un'altra sessione mobile ha ricevuto il messaggio via WebSocket.
 
 ## Sequenza di lettura della conversazione
 
